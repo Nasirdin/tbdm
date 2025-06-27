@@ -1,95 +1,87 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { fetchAllMovies } from "@/entities/movie/api/fetchMovies";
+import styles from "./page.module.scss";
+import { useEffect, useRef } from "react";
+import { Card } from "@/shared/ui/Cart";
+
+const ImgUrl = process.env.NEXT_PUBLIC_TMDB_IMG_URL || "";
+
+interface Movie {
+  id: number;
+  title: string;
+  overview: string;
+  poster_path: string;
+  release_date: string;
+}
+
+export default function HomePage() {
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["allMovies"],
+    queryFn: fetchAllMovies,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.nextPage <= lastPage.totalPages ? lastPage.nextPage : undefined,
+  });
+
+  const observerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    });
+
+    const current = observerRef.current;
+    if (current) observer.observe(current);
+
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  if (isLoading)
+    return (
+      <div className="loading">
+        <img
+          src="https://i.pinimg.com/originals/8c/2e/d7/8c2ed7b212be0ae80652fe2c5f84bd0a.gif"
+          alt="Загрузка..."
+          width={200}
         />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      </div>
+    );
+  if (isError)
+    return (
+      <div className="loading">
+        <img
+          src="https://i.pinimg.com/originals/27/ee/71/27ee71b104a1d7d0fcc49383408911c7.gif"
+          alt="Ошибка при загрузке фильмов"
+          width={200}
+        />
+      </div>
+    );
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  return (
+    <div className="container">
+      <div className={styles.grid}>
+        {data?.pages.map((page) =>
+          page.results.map((movie: Movie) => (
+            <Card key={movie.id} movie={movie} imgUrl={ImgUrl} />
+          ))
+        )}
+      </div>
+
+      <div ref={observerRef} style={{ height: 1 }} />
+      {isFetchingNextPage && <p>Загрузка ... </p>}
     </div>
   );
 }
