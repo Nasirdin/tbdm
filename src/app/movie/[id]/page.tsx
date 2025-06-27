@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { axiosInstance } from "@/shared/api/axiosInstance";
 import styles from "./page.module.scss";
 import { PopularMovies } from "@/widgets/PopularMovies";
